@@ -194,7 +194,7 @@ void SpectralEnvelopeEstimation(double *x, int x_length,
 
 void AperiodicityEstimation(double *x, int x_length,
     WorldParameters *world_parameters) {
-  D4COption option = {0};
+  world::D4COption option = {0};
   InitializeD4COption(&option);
 
   // Comment was modified because it was confusing (2017/12/10).

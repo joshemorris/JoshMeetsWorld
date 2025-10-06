@@ -208,7 +208,7 @@ namespace {
     void AperiodicityEstimation(double *x, int x_length,
                                 WorldParameters *world_parameters)
     {
-        D4COption option;
+        world::D4COption option;
         InitializeD4COption(&option);
 
         // Parameters setting and memory allocation.

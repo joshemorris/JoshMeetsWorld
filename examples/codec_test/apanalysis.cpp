@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
   wavread(argv[1], &fs, &nbit, x);
 
   // Default parameters
-  D4COption option = { 0 };
+  world::D4COption option = { 0 };
   InitializeD4COption(&option);
   option.threshold = 0.85;
   char filename[200] = "output.ap";
