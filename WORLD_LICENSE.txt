@@ -1,11 +1,11 @@
 /* ----------------------------------------------------------------- */
-/*           JoshMeetsWorld: High-quality speech analysis,           */
-/*           manipulation and synthesis system for streaming         */
-/*           developed by Josh Morris                                */
-/*                                                                   */
+/*           WORLD: High-quality speech analysis,                    */
+/*           manipulation and synthesis system                       */
+/*           developed by M. Morise                                  */
+/*           http://www.kisc.meiji.ac.jp/~mmorise/world/english/     */
 /* ----------------------------------------------------------------- */
 /*                                                                   */
-/*  Copyright (c) 2025  Josh Morris                                  */
+/*  Copyright (c) 2010  M. Morise                                    */
 /*                                                                   */
 /* All rights reserved.                                              */
 /*                                                                   */
