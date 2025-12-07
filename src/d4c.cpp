@@ -47,9 +47,8 @@ void SetParametersForGetWindowedWaveform(int half_window_length, int x_length,
 }
 }  // namespace
 
-D4C::D4C(int fs, int f0_length, int fft_size)
+D4C::D4C(int fs, int fft_size)
     : m_fs(fs),
-      m_f0_length(f0_length),
       m_fft_size(fft_size),
       m_fft_size_d4c(static_cast<int>(
           pow(2.0, 1.0 +
@@ -74,7 +73,7 @@ D4C::D4C(int fs, int f0_length, int fft_size)
   m_window.resize(m_window_length);
   NuttallWindow(m_window_length, m_window.data());
 
-  m_aperiodicity0.resize(f0_length);
+  // m_aperiodicity0 is now resized in process()
 
   m_coarse_aperiodicity.resize(m_number_of_aperiodicities + 2);
   m_coarse_frequency_axis.resize(m_number_of_aperiodicities + 2);
@@ -106,17 +105,22 @@ D4C::~D4C() {
 }
 
 void D4C::process(const double *x, int x_length,
-                  const double *temporal_positions, const double *f0,
+                  const double *temporal_positions, const double *f0, int f0_length,
                   const D4COption *option, double **aperiodicity) {
-  InitializeAperiodicity(aperiodicity);
+  // Ensure internal buffer is large enough for the current F0 length
+  if (m_aperiodicity0.size() != static_cast<size_t>(f0_length)) {
+    m_aperiodicity0.resize(f0_length);
+  }
+
+  InitializeAperiodicity(aperiodicity, f0_length);
 
   // D4C Love Train (Aperiodicity at 0 Hz is given by a different algorithm)
-  D4CLoveTrain(x, x_length, f0, temporal_positions);
+  D4CLoveTrain(x, x_length, f0, f0_length, temporal_positions);
 
   m_coarse_aperiodicity[0] = -60.0;
   m_coarse_aperiodicity[m_number_of_aperiodicities + 1] = -kMySafeGuardMinimum;
 
-  for (int i = 0; i < m_f0_length; ++i) {
+  for (int i = 0; i < f0_length; ++i) {
     if (f0[i] == 0 || m_aperiodicity0[i] <= option->threshold) continue;
     D4CGeneralBody(x, x_length, MyMaxDouble(kFloorF0D4C, f0[i]),
                    temporal_positions[i], &m_coarse_aperiodicity[1]);
@@ -126,8 +130,8 @@ void D4C::process(const double *x, int x_length,
   }
 }
 
-void D4C::InitializeAperiodicity(double **aperiodicity) {
-  for (int i = 0; i < m_f0_length; ++i)
+void D4C::InitializeAperiodicity(double **aperiodicity, int f0_length) {
+  for (int i = 0; i < f0_length; ++i)
     for (int j = 0; j < m_fft_size / 2 + 1; ++j)
       aperiodicity[i][j] = 1.0 - kMySafeGuardMinimum;
 }
@@ -274,10 +278,10 @@ void D4C::GetCoarseAperiodicity(const double *static_group_delay,
   }
 }
 
-void D4C::D4CLoveTrain(const double *x, int x_length, const double *f0,
+void D4C::D4CLoveTrain(const double *x, int x_length, const double *f0, int f0_length,
                        const double *temporal_positions) {
   double lowest_f0 = 40.0;
-  for (int i = 0; i < m_f0_length; ++i) {
+  for (int i = 0; i < f0_length; ++i) {
     if (f0[i] == 0.0) {
       m_aperiodicity0[i] = 0.0;
       continue;
@@ -342,8 +346,8 @@ void D4C::D4CGeneralBody(const double *x, int x_length, double current_f0,
 void D4C(const double *x, int x_length, int fs,
          const double *temporal_positions, const double *f0, int f0_length,
          int fft_size, const world::D4COption *option, double **aperiodicity) {
-  world::D4C d4c_processor(fs, f0_length, fft_size);
-  d4c_processor.process(x, x_length, temporal_positions, f0, option,
+  world::D4C d4c_processor(fs, fft_size);
+  d4c_processor.process(x, x_length, temporal_positions, f0, f0_length, option,
                         aperiodicity);
 }
 

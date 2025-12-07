@@ -32,9 +32,8 @@ class D4C {
  public:
   // Constructor: Pre-allocates memory for processing.
   // fs: Sampling frequency (Hz).
-  // f0_length: Number of frames in the F0 contour.
   // fft_size: FFT size for the output aperiodicity.
-  D4C(int fs, int f0_length, int fft_size);
+  D4C(int fs, int fft_size);
 
   // Destructor: Frees allocated memory and FFT plans.
   ~D4C();
@@ -44,10 +43,11 @@ class D4C {
   // x_length: Length of x.
   // temporal_positions: Time axis for each F0 frame (in seconds).
   // f0: F0 contour (in Hz).
+  // f0_length: Number of frames in the F0 contour.
   // option: D4C options (e.g., VUV threshold).
   // aperiodicity: 2D output buffer for aperiodicity [f0_length][fft_size/2+1].
   void process(const double *x, int x_length,
-               const double *temporal_positions, const double *f0,
+               const double *temporal_positions, const double *f0, int f0_length,
                const D4COption *option, double **aperiodicity);
 
  private:
@@ -66,18 +66,17 @@ class D4C {
                            double *static_group_delay);
   void GetCoarseAperiodicity(const double *static_group_delay,
                              double *coarse_aperiodicity);
-  void D4CLoveTrain(const double *x, int x_length, const double *f0,
+  void D4CLoveTrain(const double *x, int x_length, const double *f0, int f0_length,
                     const double *temporal_positions);
   double D4CLoveTrainSub(const double *x, int x_length, double current_f0,
                          double current_position);
   void D4CGeneralBody(const double *x, int x_length, double current_f0,
                       double current_position, double *coarse_aperiodicity);
   void GetAperiodicity(const double *coarse_aperiodicity, double *aperiodicity);
-  void InitializeAperiodicity(double **aperiodicity);
+  void InitializeAperiodicity(double **aperiodicity, int f0_length);
 
   // Member variables for configuration and state.
   const int m_fs;
-  const int m_f0_length;
   const int m_fft_size;
 
   // D4C specific parameters, calculated in the constructor.
