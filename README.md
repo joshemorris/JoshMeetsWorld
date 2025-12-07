@@ -52,5 +52,5 @@ cmake --build . --config Release
 
 # Run Test Program
 cd ..
-.\build\Release\tests.exe .\test\vaiueo2d.wav vaieuotest_newd4cprocess.wav 1 1
+.\build\Release\tests.exe .\test\vaiueo2d.wav vaieuotest2d_synth.wav 1 1
 ```
