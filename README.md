@@ -26,9 +26,16 @@ There is no patent in all algorithms in WORLD.
 Some of the features in WORLD have also become quite popular for machine learning tasks. 
 
 
-## Using the Repo
+## Organization
 
-The repo is released under the same modified BSD-license as the original WORLD repo. You should consider doing the same with your modifications. :D  
+```
+├───build         # created by you during build 
+├───doc           # documentation
+├───src           # implementation files for JoshMeetsWorld
+│   └───world     # Headers
+├───test          # Test program
+└───tools         # Some support function to help with test program
+```
 
 
 ## Building & Testing
