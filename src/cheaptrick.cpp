@@ -10,6 +10,8 @@
 #include "world/cheaptrick.h"
 
 #include <math.h>
+#include <vector>
+#include <algorithm>
 
 #include "world/common.h"
 #include "world/constantnumbers.h"
@@ -196,19 +198,25 @@ void CheapTrickProcessor::CheapTrickGeneralBody(const double *x, int x_length,
   SmoothingWithRecovery(current_f0, m_spectral_envelope);
 }
 
-void CheapTrickProcessor::Process(const double *x, int x_length,
-                                  const double *temporal_positions,
-                                  const double *f0, int f0_length,
-                                  double **spectrogram) {
+void CheapTrickProcessor::Process(const std::vector<double>& x,
+                                  const std::vector<double>& temporal_positions,
+                                  const std::vector<double>& f0,
+                                  std::vector<std::vector<double>>& spectrogram) {
+  int f0_length = static_cast<int>(f0.size());
+  
+  // Resize the output spectrogram vector to match dimensions.
+  spectrogram.resize(f0_length, std::vector<double>(m_fft_size / 2 + 1));
+
   for (int i = 0; i < f0_length; ++i) {
     // Use default F0 for unvoiced frames below the floor.
     double current_f0 = f0[i] <= m_f0_floor ? world::kDefaultF0 : f0[i];
     
     // Process the current frame. The result is stored in m_spectral_envelope.
-    CheapTrickGeneralBody(x, x_length, current_f0,
+    // We pass .data() and .size() to the lower-level implementation.
+    CheapTrickGeneralBody(x.data(), static_cast<int>(x.size()), current_f0,
         temporal_positions[i]);
 
-    // Copy the result to the output spectrogram.
+    // Copy the result to the output spectrogram vector.
     for (int j = 0; j <= m_fft_size / 2; ++j)
       spectrogram[i][j] = m_spectral_envelope[j];
   }
@@ -222,12 +230,22 @@ void CheapTrick(const double *x, int x_length, int fs,
     const double *temporal_positions, const double *f0, int f0_length,
     const CheapTrickOption *option, double **spectrogram) {
   
-  // Instantiate the processor class. It handles all setup and memory.
+  // Create vectors from C-style arrays for compatibility with the new interface.
+  std::vector<double> x_vec(x, x + x_length);
+  std::vector<double> temporal_vec(temporal_positions, temporal_positions + f0_length);
+  std::vector<double> f0_vec(f0, f0 + f0_length);
+  std::vector<std::vector<double>> spectrogram_vec;
+
+  // Instantiate the processor class.
   CheapTrickProcessor processor(fs, option);
 
-  // Call the main processing method.
-  processor.Process(x, x_length, temporal_positions, f0, f0_length,
-      spectrogram);
+  // Call the main processing method with vectors.
+  processor.Process(x_vec, temporal_vec, f0_vec, spectrogram_vec);
+
+  // Copy the result back to the C-style spectrogram buffer.
+  for (int i = 0; i < f0_length; ++i) {
+    std::copy(spectrogram_vec[i].begin(), spectrogram_vec[i].end(), spectrogram[i]);
+  }
 }
 
 int GetFFTSizeForCheapTrick(int fs, const CheapTrickOption *option) {

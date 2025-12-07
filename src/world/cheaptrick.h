@@ -9,6 +9,8 @@
 #ifndef WORLD_CHEAPTRICK_H_
 #define WORLD_CHEAPTRICK_H_
 
+#include <vector>
+
 #include "world/common.h"
 #include "world/macrodefinitions.h"
 #include "world/matlabfunctions.h"
@@ -66,8 +68,11 @@ class CheapTrickProcessor {
   ~CheapTrickProcessor();
 
   // Processes the entire signal to produce a spectrogram.
-  void Process(const double *x, int x_length, const double *temporal_positions,
-               const double *f0, int f0_length, double **spectrogram);
+  // Using std::vector arguments as requested.
+  void Process(const std::vector<double>& x,
+               const std::vector<double>& temporal_positions,
+               const std::vector<double>& f0,
+               std::vector<std::vector<double>>& spectrogram);
 
   // The main processing method for a single frame, corresponding to the
   // original CheapTrickGeneralBody function.
