@@ -104,9 +104,15 @@ D4C::~D4C() {
   DestroyForwardRealFFT(&m_forward_real_fft_love_train);
 }
 
-void D4C::process(const double *x, int x_length,
-                  const double *temporal_positions, const double *f0, int f0_length,
-                  const D4COption *option, double **aperiodicity) {
+void D4C::process(const std::vector<double>& x,
+               const std::vector<double>& temporal_positions,
+               const std::vector<double>& f0,
+               const D4COption *option, 
+               std::vector<std::vector<double>>& aperiodicity)
+{
+  int x_length = x.size();
+  int f0_length = f0.size();
+
   // Ensure internal buffer is large enough for the current F0 length
   if (m_aperiodicity0.size() != static_cast<size_t>(f0_length)) {
     m_aperiodicity0.resize(f0_length);
@@ -115,22 +121,22 @@ void D4C::process(const double *x, int x_length,
   InitializeAperiodicity(aperiodicity, f0_length);
 
   // D4C Love Train (Aperiodicity at 0 Hz is given by a different algorithm)
-  D4CLoveTrain(x, x_length, f0, f0_length, temporal_positions);
+  D4CLoveTrain(x.data(), x_length, f0.data(), f0_length, temporal_positions.data());
 
   m_coarse_aperiodicity[0] = -60.0;
   m_coarse_aperiodicity[m_number_of_aperiodicities + 1] = -kMySafeGuardMinimum;
 
   for (int i = 0; i < f0_length; ++i) {
     if (f0[i] == 0 || m_aperiodicity0[i] <= option->threshold) continue;
-    D4CGeneralBody(x, x_length, MyMaxDouble(kFloorF0D4C, f0[i]),
+    D4CGeneralBody(x.data(), x_length, MyMaxDouble(kFloorF0D4C, f0[i]),
                    temporal_positions[i], &m_coarse_aperiodicity[1]);
 
     // Linear interpolation to convert coarse aperiodicity to spectral representation
-    GetAperiodicity(m_coarse_aperiodicity.data(), aperiodicity[i]);
+    GetAperiodicity(m_coarse_aperiodicity.data(), aperiodicity[i].data());
   }
 }
 
-void D4C::InitializeAperiodicity(double **aperiodicity, int f0_length) {
+void D4C::InitializeAperiodicity(std::vector<std::vector<double>>& aperiodicity, int f0_length) {
   for (int i = 0; i < f0_length; ++i)
     for (int j = 0; j < m_fft_size / 2 + 1; ++j)
       aperiodicity[i][j] = 1.0 - kMySafeGuardMinimum;
@@ -346,9 +352,22 @@ void D4C::D4CGeneralBody(const double *x, int x_length, double current_f0,
 void D4C(const double *x, int x_length, int fs,
          const double *temporal_positions, const double *f0, int f0_length,
          int fft_size, const world::D4COption *option, double **aperiodicity) {
+  int spectral_dim = (fft_size / 2) + 1;
+  std::vector<double> x_vec(x, x + x_length);
+  std::vector<double> temporal_positions_vec(temporal_positions, temporal_positions + f0_length);
+  std::vector<double> f0_vec(f0, f0 + f0_length); 
+  std::vector<std::vector<double>> aperiodicity_vec(f0_length, std::vector<double>(spectral_dim, 0));
   world::D4C d4c_processor(fs, fft_size);
-  d4c_processor.process(x, x_length, temporal_positions, f0, f0_length, option,
-                        aperiodicity);
+
+  d4c_processor.process(x_vec,
+                        temporal_positions_vec,
+                        f0_vec,
+                        option,
+                        aperiodicity_vec);
+
+  for (int i = 0; i < f0_length; i++) {
+    std::copy(aperiodicity_vec[i].begin(), aperiodicity_vec[i].end(), aperiodicity[i]);
+  }
 }
 
 void InitializeD4COption(world::D4COption *option) {

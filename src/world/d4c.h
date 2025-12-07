@@ -5,7 +5,9 @@
 #ifndef WORLD_D4C_H_
 #define WORLD_D4C_H_
 
+#include <algorithm>
 #include <vector>
+
 #include "world/common.h"
 #include "world/macrodefinitions.h"
 #include "world/matlabfunctions.h"
@@ -40,15 +42,15 @@ class D4C {
 
   // process() calculates the aperiodicity for the given audio signal.
   // x: Input signal.
-  // x_length: Length of x.
   // temporal_positions: Time axis for each F0 frame (in seconds).
   // f0: F0 contour (in Hz).
-  // f0_length: Number of frames in the F0 contour.
   // option: D4C options (e.g., VUV threshold).
   // aperiodicity: 2D output buffer for aperiodicity [f0_length][fft_size/2+1].
-  void process(const double *x, int x_length,
-               const double *temporal_positions, const double *f0, int f0_length,
-               const D4COption *option, double **aperiodicity);
+  void process(const std::vector<double>& x,
+               const std::vector<double>& temporal_positions,
+               const std::vector<double>& f0,
+               const D4COption *option, 
+               std::vector<std::vector<double>>& aperiodicity);
 
  private:
   void GetWindowedWaveform(const double *x, int x_length, double current_f0,
@@ -73,7 +75,7 @@ class D4C {
   void D4CGeneralBody(const double *x, int x_length, double current_f0,
                       double current_position, double *coarse_aperiodicity);
   void GetAperiodicity(const double *coarse_aperiodicity, double *aperiodicity);
-  void InitializeAperiodicity(double **aperiodicity, int f0_length);
+  void InitializeAperiodicity(std::vector<std::vector<double>>& aperiodicity, int f0_length);
 
   // Member variables for configuration and state.
   const int m_fs;
