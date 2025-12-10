@@ -53,6 +53,7 @@ class D4C {
                std::vector<std::vector<double>>& aperiodicity);
 
   int getNumberOfAperiodicities() { return m_number_of_aperiodicities; }
+  int getOutputDim() { return m_fft_size / 2 + 1; }
 
  private:
   void GetWindowedWaveform(const double *x, int x_length, double current_f0,
