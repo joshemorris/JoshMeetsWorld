@@ -52,6 +52,8 @@ class D4C {
                const D4COption *option, 
                std::vector<std::vector<double>>& aperiodicity);
 
+  int getNumberOfAperiodicities() { return m_number_of_aperiodicities; }
+
  private:
   void GetWindowedWaveform(const double *x, int x_length, double current_f0,
                            double current_position, int window_type,

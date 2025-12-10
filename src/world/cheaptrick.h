@@ -80,8 +80,9 @@ class CheapTrickProcessor {
                              double current_f0, double current_position);
 
   // Getters for important parameters.
-  double get_f0_floor() const { return m_f0_floor; }
-  int get_fft_size() const { return m_fft_size; }
+  double getF0Floor() const { return m_f0_floor; }
+  int getFFTSize() const { return m_fft_size; }
+  int getSpectrumSize() const { return m_spectrum_size; }
 
  private:
   // Private helper methods, refactored from static functions.
@@ -95,6 +96,7 @@ class CheapTrickProcessor {
   const int m_fs;
   const double m_q1;
   const int m_fft_size;
+  const int m_spectrum_size;
   const double m_f0_floor;
 
   ForwardRealFFT m_forward_real_fft;

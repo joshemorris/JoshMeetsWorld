@@ -25,7 +25,8 @@ CheapTrickProcessor::CheapTrickProcessor(int fs, const CheapTrickOption *option)
     : m_fs(fs),
       m_q1(option->q1),
       m_fft_size(option->fft_size),
-      m_f0_floor(GetF0FloorForCheapTrick(fs, option->fft_size)) {
+      m_f0_floor(GetF0FloorForCheapTrick(fs, option->fft_size)),
+      m_spectrum_size(m_fft_size / 2 + 1){
   // Initialize random number generator state.
   randn_reseed(&m_randn_state);
 
@@ -49,7 +50,7 @@ CheapTrickProcessor::CheapTrickProcessor(int fs, const CheapTrickOption *option)
   m_window = new double[m_max_window_length];
   
   // Allocate the spectral envelope buffer.
-  m_spectral_envelope = new double[m_fft_size];
+  m_spectral_envelope = new double[m_spectrum_size];
 }
 
 CheapTrickProcessor::~CheapTrickProcessor() {
