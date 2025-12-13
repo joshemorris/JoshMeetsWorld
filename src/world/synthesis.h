@@ -6,6 +6,8 @@
 #ifndef WORLD_SYNTHESIS_H_
 #define WORLD_SYNTHESIS_H_
 
+#include <vector>
+
 #include "world/common.h"
 #include "world/macrodefinitions.h"
 #include "world/matlabfunctions.h"
@@ -35,21 +37,20 @@ class Synthesizer {
   ~Synthesizer();
 
   //---------------------------------------------------------------------------
-  // The process method synthesizes the voice in real-time.
-  // This function is designed to be allocation-free.
+  // The process method synthesizes the voice using std::vector.
+  // This overload provides a modern C++ interface.
   //
   // Input:
   //   f0           : F0 contour
-  //   f0_length    : Length of F0
   //   spectrogram  : Spectrogram
   //   aperiodicity : Aperiodicity spectrogram
-  //   y_length     : Length of the output signal
   // Output:
-  //   y            : Synthesized speech signal
+  //   y            : Synthesized speech signal (resized to match y_length)
   //---------------------------------------------------------------------------
-  void process(const double *f0, int f0_length,
-      const double * const *spectrogram, const double * const *aperiodicity,
-      int y_length, double *y);
+  void process(const std::vector<double>& f0,
+      const std::vector<std::vector<double>>& spectrogram,
+      const std::vector<std::vector<double>>& aperiodicity,
+      std::vector<double>& y);
 
  private:
   // Private methods that were formerly static functions in the original file.
@@ -60,10 +61,14 @@ class Synthesizer {
   void GetPeriodicResponse(const double *spectrum,
       const double *aperiodic_ratio, double current_vuv,
       double fractional_time_shift);
+
+  // New vector-based overload
   void GetOneFrameSegment(double current_vuv, int noise_size,
-      const double * const *spectrogram, const double * const *aperiodicity,
+      const std::vector<std::vector<double>>& spectrogram,
+      const std::vector<std::vector<double>>& aperiodicity,
       int f0_length, double current_time, double fractional_time_shift,
       double *response);
+
   int GetTimeBase(const double *f0, int f0_length, double lowest_f0,
       int y_length);
   void GetTemporalParametersForTimeBase(const double *f0, int f0_length,
@@ -78,6 +83,8 @@ class Synthesizer {
   const int m_fs;
   const double m_frame_period;
   const int m_fft_size;
+  const int m_f0_length;
+  const int m_y_length;
 
   // FFT-related structures and random number generator state
   RandnState m_randn_state;

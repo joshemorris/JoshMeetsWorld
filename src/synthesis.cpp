@@ -9,6 +9,8 @@
 #include "world/synthesis.h"
 
 #include <math.h>
+#include <vector>
+#include <stdexcept>
 
 #include "world/constantnumbers.h"
 #include "world/matlabfunctions.h"
@@ -16,8 +18,11 @@
 namespace {
 // These helper functions do not depend on class state and can remain static.
 // They are used by the private methods of the Synthesizer class.
+
+// Templated to support both double** and std::vector<std::vector<double>>
+template <typename T>
 void GetSpectralEnvelope(double current_time, double frame_period,
-    int f0_length, const double * const *spectrogram, int fft_size,
+    int f0_length, const T& spectrogram, int fft_size,
     double *spectral_envelope) {
   int current_frame_floor = MyMinInt(f0_length - 1,
     static_cast<int>(floor(current_time / frame_period)));
@@ -35,8 +40,10 @@ void GetSpectralEnvelope(double current_time, double frame_period,
         interpolation * fabs(spectrogram[current_frame_ceil][i]);
 }
 
+// Templated to support both double** and std::vector<std::vector<double>>
+template <typename T>
 void GetAperiodicRatio(double current_time, double frame_period,
-    int f0_length, const double * const *aperiodicity, int fft_size,
+    int f0_length, const T& aperiodicity, int fft_size,
     double *aperiodic_spectrum) {
   int current_frame_floor = MyMinInt(f0_length - 1,
     static_cast<int>(floor(current_time / frame_period)));
@@ -74,7 +81,8 @@ void GetDCRemover(int fft_size, double *dc_remover) {
 
 Synthesizer::Synthesizer(int fs, double frame_period, int fft_size,
     int f0_length, int y_length) :
-    m_fs(fs), m_frame_period(frame_period / 1000.0), m_fft_size(fft_size) {
+    m_fs(fs), m_frame_period(frame_period / 1000.0), m_fft_size(fft_size),
+    m_f0_length(f0_length), m_y_length(y_length) {
   // Initialize FFT and random number generator structures
   InitializeMinimumPhaseAnalysis(m_fft_size, &m_minimum_phase);
   InitializeInverseRealFFT(m_fft_size, &m_inverse_real_fft);
@@ -229,8 +237,10 @@ void Synthesizer::GetPeriodicResponse(const double *spectrum,
   RemoveDCComponent(m_periodic_response, m_periodic_response);
 }
 
+// New vector-based implementation
 void Synthesizer::GetOneFrameSegment(double current_vuv, int noise_size,
-    const double * const *spectrogram, const double * const *aperiodicity,
+    const std::vector<std::vector<double>>& spectrogram,
+    const std::vector<std::vector<double>>& aperiodicity,
     int f0_length, double current_time, double fractional_time_shift,
     double *response) {
   GetSpectralEnvelope(current_time, m_frame_period, f0_length, spectrogram,
@@ -314,13 +324,22 @@ int Synthesizer::GetTimeBase(const double *f0, int f0_length,
   return GetPulseLocationsForTimeBase(m_interpolated_f0, y_length);
 }
 
-void Synthesizer::process(const double *f0, int f0_length,
-    const double * const *spectrogram, const double * const *aperiodicity,
-    int y_length, double *y) {
-  for (int i = 0; i < y_length; ++i) y[i] = 0.0;
+// New vector-based process
+void Synthesizer::process(const std::vector<double>& f0,
+    const std::vector<std::vector<double>>& spectrogram,
+    const std::vector<std::vector<double>>& aperiodicity,
+    std::vector<double>& y) {
+  
+  // Ensure the input f0 does not exceed the buffer capacity
+  if (f0.size() > static_cast<size_t>(m_f0_length)) {
+    throw std::length_error("Synthesizer::process: Input f0 length exceeds allocated buffer size.");
+  }
 
-  int number_of_pulses = GetTimeBase(f0, f0_length,
-      m_fs / m_fft_size + 1.0, y_length);
+  // Ensure output vector is sized correctly
+  y.assign(m_y_length, 0.0);
+
+  int number_of_pulses = GetTimeBase(f0.data(), static_cast<int>(f0.size()),
+      m_fs / m_fft_size + 1.0, m_y_length);
 
   int noise_size;
   int index, offset, lower_limit, upper_limit;
@@ -329,12 +348,13 @@ void Synthesizer::process(const double *f0, int f0_length,
       m_pulse_locations_index[i];
 
     GetOneFrameSegment(m_interpolated_vuv[m_pulse_locations_index[i]],
-        noise_size, spectrogram, aperiodicity, f0_length, m_pulse_locations[i],
-        m_pulse_locations_time_shift[i], m_impulse_response);
+        noise_size, spectrogram, aperiodicity, static_cast<int>(f0.size()),
+        m_pulse_locations[i], m_pulse_locations_time_shift[i],
+        m_impulse_response);
 
     offset = m_pulse_locations_index[i] - m_fft_size / 2 + 1;
     lower_limit = MyMaxInt(0, -offset);
-    upper_limit = MyMinInt(m_fft_size, y_length - offset);
+    upper_limit = MyMinInt(m_fft_size, m_y_length - offset);
     for (int j = lower_limit; j < upper_limit; ++j) {
       index = j + offset;
       y[index] += m_impulse_response[j];
@@ -347,6 +367,27 @@ void Synthesis(const double *f0, int f0_length,
     const double * const *spectrogram, const double * const *aperiodicity,
     int fft_size, double frame_period, int fs, int y_length, double *y) {
   Synthesizer synthesizer(fs, frame_period, fft_size, f0_length, y_length);
-  synthesizer.process(f0, f0_length, spectrogram, aperiodicity, y_length, y);
-}
 
+  // Convert inputs to vectors
+  std::vector<double> f0_vec(f0, f0 + f0_length);
+
+  int speclen = fft_size / 2 + 1;
+  std::vector<std::vector<double>> spectrogram_vec(f0_length, std::vector<double>(speclen));
+  std::vector<std::vector<double>> aperiodicity_vec(f0_length, std::vector<double>(speclen));
+
+  for (int i = 0; i < f0_length; ++i) {
+    for (int j = 0; j < speclen; ++j) {
+      spectrogram_vec[i][j] = spectrogram[i][j];
+      aperiodicity_vec[i][j] = aperiodicity[i][j];
+    }
+  }
+
+  std::vector<double> y_vec;
+
+  synthesizer.process(f0_vec, spectrogram_vec, aperiodicity_vec, y_vec);
+
+  // Copy output back
+  for (int i = 0; i < y_length && i < static_cast<int>(y_vec.size()); ++i) {
+    y[i] = y_vec[i];
+  }
+}
