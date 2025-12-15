@@ -25,8 +25,8 @@ class Synthesizer {
   //   fs           : Sampling frequency
   //   frame_period : Frame period in milliseconds
   //   fft_size     : FFT size
-  //   f0_length    : The length of the F0 contour for buffer allocation
-  //   y_length     : The length of the output waveform for buffer allocation
+  //   f0_length    : Maximum capacity for F0 frames
+  //   y_length     : Maximum capacity for output waveform
   //---------------------------------------------------------------------------
   Synthesizer(int fs, double frame_period, int fft_size, int f0_length,
       int y_length);
@@ -41,11 +41,11 @@ class Synthesizer {
   // This overload provides a modern C++ interface.
   //
   // Input:
-  //   f0           : F0 contour
+  //   f0           : F0 contour (determines output length)
   //   spectrogram  : Spectrogram
   //   aperiodicity : Aperiodicity spectrogram
   // Output:
-  //   y            : Synthesized speech signal (resized to match y_length)
+  //   y            : Synthesized speech signal (resized based on f0 input)
   //---------------------------------------------------------------------------
   void process(const std::vector<double>& f0,
       const std::vector<std::vector<double>>& spectrogram,

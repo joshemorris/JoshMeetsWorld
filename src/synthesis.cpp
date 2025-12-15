@@ -11,6 +11,7 @@
 #include <math.h>
 #include <vector>
 #include <stdexcept>
+#include <algorithm> // for std::min, std::max if needed
 
 #include "world/constantnumbers.h"
 #include "world/matlabfunctions.h"
@@ -335,11 +336,20 @@ void Synthesizer::process(const std::vector<double>& f0,
     throw std::length_error("Synthesizer::process: Input f0 length exceeds allocated buffer size.");
   }
 
-  // Ensure output vector is sized correctly
-  y.assign(m_y_length, 0.0);
+  // Calculate the actual output length based on input frames.
+  // Formula derived from WORLD's calculation logic: (frames - 1) * period * fs + 1
+  int current_y_length = static_cast<int>((f0.size() - 1) * m_frame_period * m_fs) + 1;
+
+  // Validate against buffer capacity
+  if (current_y_length > m_y_length) {
+    throw std::length_error("Synthesizer::process: Calculated output length exceeds allocated buffer size.");
+  }
+  
+  // Ensure output vector is sized correctly to the calculated length
+  y.assign(current_y_length, 0.0);
 
   int number_of_pulses = GetTimeBase(f0.data(), static_cast<int>(f0.size()),
-      m_fs / m_fft_size + 1.0, m_y_length);
+      m_fs / m_fft_size + 1.0, current_y_length);
 
   int noise_size;
   int index, offset, lower_limit, upper_limit;
@@ -354,7 +364,7 @@ void Synthesizer::process(const std::vector<double>& f0,
 
     offset = m_pulse_locations_index[i] - m_fft_size / 2 + 1;
     lower_limit = MyMaxInt(0, -offset);
-    upper_limit = MyMinInt(m_fft_size, m_y_length - offset);
+    upper_limit = MyMinInt(m_fft_size, current_y_length - offset);
     for (int j = lower_limit; j < upper_limit; ++j) {
       index = j + offset;
       y[index] += m_impulse_response[j];
